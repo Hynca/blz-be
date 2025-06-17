@@ -3,14 +3,9 @@ dotenv.config();
 
 export default {
   // Use the connection string from .env
-  CONNECTION_STRING:
-    process.env.DATABASE_URL ||
-    "postgresql://neondb_owner:npg_u78MIHeWjmwt@ep-wispy-dust-a93grl0b-pooler.gwc.azure.neon.tech/neondb?sslmode=require",
+  CONNECTION_STRING: process.env.DATABASE_URL || "",
 
   // Keep traditional config for Sequelize compatibility
-  HOST: "ep-wispy-dust-a93grl0b-pooler.gwc.azure.neon.tech",
-  USER: "neondb_owner",
-  PASSWORD: "npg_u78MIHeWjmwt",
   DB: "neondb",
   dialect: "postgres",
   dialectOptions: {
