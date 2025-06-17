@@ -25,6 +25,11 @@ export interface JwtPayload {
   exp?: number;
 }
 
+export interface RefreshTokenPayload {
+  userId: number;
+  tokenId: string;
+}
+
 declare global {
   namespace Express {
     interface Request {

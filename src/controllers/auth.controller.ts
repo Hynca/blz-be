@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { validationResult } from "express-validator";
 import db from "../models";
 import * as jwtUtils from "../utils/jwt.utils";
-import { testBcrypt } from "../utils/password-test.utils";
 import bcrypt from "bcrypt";
 
 const User = db.users;
@@ -34,8 +33,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Generate JWT token
     const token = jwtUtils.generateToken(user.id, user.email, user.username);
 
-    // Set HTTP-only cookie
+    // Generate refresh token
+    const refreshToken = jwtUtils.generateRefreshToken();
+
+    // Save refresh token to user record
+    await user.update({ refreshToken });
+
+    // Set HTTP-only cookies
     jwtUtils.setCookie(res, token);
+    jwtUtils.setRefreshTokenCookie(res, refreshToken);
 
     // Return user info (without password)
     const userResponse = {
@@ -72,18 +78,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Try direct bcrypt comparison as a test
-    try {
-      const directCompare = await bcrypt.compare(password, user.password);
-      console.log("Direct compare result:", directCompare);
-    } catch (err) {
-      console.error("Direct bcrypt comparison error:", err);
-    }
-
     // Check password through the model method
-    console.log("Attempting to compare password through model method");
     const isPasswordValid = await user.comparePassword(password);
-    console.log("Model method password valid:", isPasswordValid);
     if (!isPasswordValid) {
       res.status(401).json({ message: "Invalid email or password" });
       return;
@@ -91,8 +87,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Generate JWT token
     const token = jwtUtils.generateToken(user.id, user.email, user.username);
 
-    // Set HTTP-only cookie
+    // Generate refresh token
+    const refreshToken = jwtUtils.generateRefreshToken();
+
+    // Save refresh token to user record
+    await user.update({ refreshToken });
+
+    // Set HTTP-only cookies
     jwtUtils.setCookie(res, token);
+    jwtUtils.setRefreshTokenCookie(res, refreshToken);
 
     // Return user info (without password)
     const userResponse = {
@@ -112,11 +115,85 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// Refresh the user's access token
+export const refreshToken = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    // Get the refresh token from the cookie
+    const refreshToken = jwtUtils.getRefreshTokenFromCookie(req);
+
+    if (!refreshToken) {
+      res.status(401).json({ message: "Refresh token not provided" });
+      return;
+    }
+
+    // Find the user with this refresh token
+    const user = await User.findOne({ where: { refreshToken } });
+
+    if (!user) {
+      res.status(401).json({ message: "Invalid refresh token" });
+      return;
+    }
+
+    // Generate a new access token
+    const newAccessToken = jwtUtils.generateToken(
+      user.id,
+      user.email,
+      user.username
+    );
+
+    // Generate a new refresh token (optional, for enhanced security)
+    const newRefreshToken = jwtUtils.generateRefreshToken();
+
+    // Update the user with the new refresh token
+    await user.update({ refreshToken: newRefreshToken });
+
+    // Set the new tokens as cookies
+    jwtUtils.setCookie(res, newAccessToken);
+    jwtUtils.setRefreshTokenCookie(res, newRefreshToken);
+
+    // Return success message
+    res.status(200).json({
+      message: "Token refreshed successfully",
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      message: err.message || "Error occurred while refreshing token",
+    });
+  }
+};
+
 // Logout user
-export const logout = (req: Request, res: Response): void => {
-  // Clear the JWT cookie
-  jwtUtils.clearCookie(res);
-  res.status(200).json({ message: "Logged out successfully" });
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // Get the refresh token from the cookie
+    const refreshToken = jwtUtils.getRefreshTokenFromCookie(req);
+
+    // If refresh token exists, find and update the user
+    if (refreshToken) {
+      const user = await User.findOne({ where: { refreshToken } });
+      if (user) {
+        // Clear the refresh token in the database
+        await user.update({ refreshToken: null });
+      }
+    }
+
+    // Clear the JWT cookies
+    jwtUtils.clearCookie(res);
+
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err: any) {
+    res.status(500).json({
+      message: err.message || "Error occurred during logout",
+    });
+  }
 };
 
 // Get current user profile
@@ -131,7 +208,7 @@ export const me = async (req: Request, res: Response): Promise<void> => {
     }
 
     const user = await User.findByPk(userId, {
-      attributes: { exclude: ["password"] },
+      attributes: { exclude: ["password", "refreshToken"] },
     });
 
     if (!user) {

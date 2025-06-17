@@ -6,12 +6,13 @@ export interface UserAttributes {
   username: string;
   email: string;
   password: string;
+  refreshToken: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface UserCreationAttributes
-  extends Optional<UserAttributes, "id"> {}
+  extends Optional<UserAttributes, "id" | "refreshToken"> {}
 
 class User
   extends Model<UserAttributes, UserCreationAttributes>
@@ -21,6 +22,7 @@ class User
   public username!: string;
   public email!: string;
   public password!: string;
+  public refreshToken!: string | null;
 
   // Timestamps
   public readonly createdAt!: Date;
@@ -63,6 +65,10 @@ export default (sequelize: Sequelize) => {
       password: {
         type: DataTypes.STRING,
         allowNull: false,
+      },
+      refreshToken: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
     },
     {

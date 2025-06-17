@@ -28,6 +28,9 @@ router.post(
   authController.login
 );
 
+// Refresh access token
+router.post("/refresh", authController.refreshToken);
+
 // Logout user
 router.post("/logout", authController.logout);
 
