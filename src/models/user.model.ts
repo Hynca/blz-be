@@ -1,4 +1,5 @@
 import { Sequelize, DataTypes, Model, Optional } from "sequelize";
+import bcrypt from "bcrypt";
 
 interface UserAttributes {
   id: number;
@@ -23,6 +24,19 @@ class User
   // Timestamps
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+
+  // Custom instance methods
+  public async comparePassword(password: string): Promise<boolean> {
+    try {
+      const isMatch = await bcrypt.compare(password, this.password);
+      console.log("Password match result:", isMatch);
+      return isMatch;
+    } catch (error) {
+      console.error("Error comparing passwords:", error);
+      console.error("Error details:", JSON.stringify(error));
+      return false;
+    }
+  }
 }
 
 export default (sequelize: Sequelize) => {
@@ -54,6 +68,20 @@ export default (sequelize: Sequelize) => {
       sequelize,
       tableName: "users",
       timestamps: true,
+      hooks: {
+        beforeCreate: async (user: User) => {
+          if (user.password) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(user.password, salt);
+          }
+        },
+        beforeUpdate: async (user: User) => {
+          if (user.changed("password")) {
+            const salt = await bcrypt.genSalt(10);
+            user.password = await bcrypt.hash(user.password, salt);
+          }
+        },
+      },
     }
   );
 

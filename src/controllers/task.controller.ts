@@ -4,18 +4,36 @@ import db from "../models";
 const Task = db.tasks;
 const User = db.users;
 
+// Helper function to check if the authenticated user has permission for the task
+const hasPermission = (req: Request, userId: number): boolean => {
+  // User is allowed to access only their own tasks
+  return req.user?.userId === userId;
+};
+
+// Helper to safely parse numeric IDs
+const parseNumericId = (id: string | undefined): number | null => {
+  if (!id) return null;
+  const parsedId = parseInt(id, 10);
+  return isNaN(parsedId) ? null : parsedId;
+};
+
 // Create and Save a new Task
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     // Validate request
-    if (
-      !req.body.title ||
-      !req.body.startAt ||
-      !req.body.endAt ||
-      !req.body.userId
-    ) {
+    if (!req.body.title || !req.body.startAt || !req.body.endAt) {
       res.status(400).send({
         message: "Required fields cannot be empty!",
+      });
+      return;
+    }
+
+    // Use the authenticated user's ID from the token
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      res.status(401).send({
+        message: "Authentication required",
       });
       return;
     }
@@ -27,7 +45,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       startAt: new Date(req.body.startAt),
       endAt: new Date(req.body.endAt),
       location: req.body.location,
-      userId: req.body.userId,
+      userId: userId,
     };
 
     // Save Task in the database
@@ -45,7 +63,26 @@ export const findAllByUser = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const userId = req.params.userId;
+  const userId = parseNumericId(req.params.userId);
+  const authUserId = req.user?.userId;
+
+  if (!authUserId) {
+    res.status(401).send({ message: "Authentication required" });
+    return;
+  }
+
+  if (!userId) {
+    res.status(400).send({ message: "Invalid user ID" });
+    return;
+  }
+
+  // Only allow users to access their own tasks
+  if (authUserId !== userId) {
+    res
+      .status(403)
+      .send({ message: "Forbidden: You can only access your own tasks" });
+    return;
+  }
 
   try {
     const data = await Task.findAll({
@@ -61,8 +98,27 @@ export const findAllByUser = async (
 
 // Find a single Task with an id
 export const findOne = async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id;
-  const userId = req.params.userId;
+  const id = parseNumericId(req.params.id);
+  const userId = parseNumericId(req.params.userId);
+  const authUserId = req.user?.userId;
+
+  if (!authUserId) {
+    res.status(401).send({ message: "Authentication required" });
+    return;
+  }
+
+  if (!id || !userId) {
+    res.status(400).send({ message: "Invalid task or user ID" });
+    return;
+  }
+
+  // Only allow users to access their own tasks
+  if (authUserId !== userId) {
+    res
+      .status(403)
+      .send({ message: "Forbidden: You can only access your own tasks" });
+    return;
+  }
 
   try {
     const data = await Task.findOne({
@@ -92,6 +148,14 @@ export const update = async (req: Request, res: Response): Promise<void> => {
   const userId = req.params.userId;
 
   try {
+    // Check if the user has permission to update the task
+    if (!hasPermission(req, Number(userId))) {
+      res.status(403).send({
+        message: "You do not have permission to update this task.",
+      });
+      return;
+    }
+
     const num = await Task.update(req.body, {
       where: {
         id: id,
@@ -121,6 +185,14 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
   const userId = req.params.userId;
 
   try {
+    // Check if the user has permission to delete the task
+    if (!hasPermission(req, Number(userId))) {
+      res.status(403).send({
+        message: "You do not have permission to delete this task.",
+      });
+      return;
+    }
+
     const num = await Task.destroy({
       where: {
         id: id,
