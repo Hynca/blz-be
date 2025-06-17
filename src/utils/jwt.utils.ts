@@ -1,17 +1,18 @@
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
+import { JwtPayload } from "../types";
 
 // Load JWT secret from environment variable
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 // Token expiration time (in seconds)
 const JWT_EXPIRATION = 24 * 60 * 60; // 24 hours
 
-export interface JwtPayload {
-  userId: number;
-}
-
-export const generateToken = (userId: number): string => {
-  return jwt.sign({ userId }, JWT_SECRET, {
+export const generateToken = (
+  userId: number,
+  email: string,
+  username: string
+): string => {
+  return jwt.sign({ userId, email, username }, JWT_SECRET, {
     expiresIn: JWT_EXPIRATION,
   });
 };

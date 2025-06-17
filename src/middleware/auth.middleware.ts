@@ -1,14 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import * as jwtUtils from "../utils/jwt.utils";
-
-// Extend the Express Request type to include the user property
-declare global {
-  namespace Express {
-    interface Request {
-      user?: jwtUtils.JwtPayload;
-    }
-  }
-}
+import { JwtPayload } from "../types";
 
 export const authenticate = (
   req: Request,
@@ -33,7 +25,7 @@ export const authenticate = (
     }
 
     // Attach user data to request
-    req.user = decoded;
+    req.user = decoded as JwtPayload;
 
     // Proceed to the next middleware or controller
     next();
@@ -55,12 +47,10 @@ export const checkResourceOwnership = (userIdParam: string) => {
       }
 
       if (isNaN(resourceUserId) || resourceUserId !== authUserId) {
-        res
-          .status(403)
-          .json({
-            message:
-              "Forbidden: You do not have permission to access this resource",
-          });
+        res.status(403).json({
+          message:
+            "Forbidden: You do not have permission to access this resource",
+        });
         return;
       }
 

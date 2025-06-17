@@ -13,33 +13,19 @@ router.use(authenticate);
 // Create a new Task
 router.post("/", taskController.create);
 
-// Routes that need ownership validation
-// Retrieve all Tasks for a User
-router.get(
-  "/user/:userId",
-  checkResourceOwnership("userId"),
-  taskController.findAllByUser
-);
+// Retrieve all Tasks for authenticated User
+router.get("/", taskController.findAllByUser);
 
-// Retrieve a single Task for a User
-router.get(
-  "/user/:userId/task/:id",
-  checkResourceOwnership("userId"),
-  taskController.findOne
-);
+// Retrieve all Tasks as a table for authenticated User
+router.get("/table", taskController.findAllByUserAsTable);
 
-// Update a Task for a User
-router.put(
-  "/user/:userId/task/:id",
-  checkResourceOwnership("userId"),
-  taskController.update
-);
+// Retrieve a single Task for authenticated User
+router.get("/:id", taskController.findOne);
 
-// Delete a Task for a User
-router.delete(
-  "/user/:userId/task/:id",
-  checkResourceOwnership("userId"),
-  taskController.remove
-);
+// Update a Task for authenticated User
+router.put("/:id", taskController.update);
+
+// Delete a Task for authenticated User
+router.delete("/:id", taskController.remove);
 
 export default router;

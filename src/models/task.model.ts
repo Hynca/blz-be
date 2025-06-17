@@ -1,7 +1,8 @@
 import { Sequelize, DataTypes, Model, Optional } from "sequelize";
 import User from "./user.model";
 
-interface TaskAttributes {
+// Export these interfaces for reuse in other files
+export interface TaskAttributes {
   id: number;
   title: string;
   description: string;
@@ -13,7 +14,8 @@ interface TaskAttributes {
   updatedAt?: Date;
 }
 
-interface TaskCreationAttributes extends Optional<TaskAttributes, "id"> {}
+export interface TaskCreationAttributes
+  extends Optional<TaskAttributes, "id"> {}
 
 class Task
   extends Model<TaskAttributes, TaskCreationAttributes>
@@ -64,9 +66,9 @@ export default (sequelize: Sequelize) => {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: 'users',
-          key: 'id'
-        }
+          model: "users",
+          key: "id",
+        },
       },
     },
     {

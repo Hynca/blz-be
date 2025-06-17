@@ -24,9 +24,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     if (existingUser) {
       res.status(400).json({ message: "User already exists with this email" });
       return;
-    }
-
-    // Create user
+    } // Create user
     const user = await User.create({
       username,
       email,
@@ -34,7 +32,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     });
 
     // Generate JWT token
-    const token = jwtUtils.generateToken(user.id);
+    const token = jwtUtils.generateToken(user.id, user.email, user.username);
 
     // Set HTTP-only cookie
     jwtUtils.setCookie(res, token);
@@ -86,13 +84,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     console.log("Attempting to compare password through model method");
     const isPasswordValid = await user.comparePassword(password);
     console.log("Model method password valid:", isPasswordValid);
-
     if (!isPasswordValid) {
       res.status(401).json({ message: "Invalid email or password" });
       return;
     }
     // Generate JWT token
-    const token = jwtUtils.generateToken(user.id);
+    const token = jwtUtils.generateToken(user.id, user.email, user.username);
 
     // Set HTTP-only cookie
     jwtUtils.setCookie(res, token);
