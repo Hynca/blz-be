@@ -3,9 +3,9 @@ import { Request, Response } from "express";
 import { JwtPayload } from "../types";
 
 // Load JWT secret from environment variable
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "";
 // Token expiration time (in seconds)
-const JWT_EXPIRATION = 24 * 60 * 60; // 24 hours
+const JWT_EXPIRATION = Number(process.env.JWT_EXPIRATION) || 24 * 60 * 60; // 24 hours
 
 export const generateToken = (
   userId: number,
