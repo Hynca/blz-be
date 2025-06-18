@@ -41,9 +41,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     // Set HTTP-only cookies
     jwtUtils.setCookie(res, token);
-    jwtUtils.setRefreshTokenCookie(res, refreshToken);
-
-    // Return user info (without password)
+    jwtUtils.setRefreshTokenCookie(res, refreshToken); // Return user info (without password)
     const userResponse = {
       id: user.id,
       username: user.username,
@@ -53,6 +51,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({
       message: "User registered successfully",
       user: userResponse,
+      token,
+      refreshToken,
     });
   } catch (err: any) {
     res.status(500).json({
@@ -107,6 +107,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       message: "Login successful",
       user: userResponse,
+      token,
+      refreshToken,
     });
   } catch (err: any) {
     res.status(500).json({
@@ -152,9 +154,7 @@ export const refreshToken = async (
 
     // Set the new tokens as cookies
     jwtUtils.setCookie(res, newAccessToken);
-    jwtUtils.setRefreshTokenCookie(res, newRefreshToken);
-
-    // Return success message
+    jwtUtils.setRefreshTokenCookie(res, newRefreshToken); // Return success message
     res.status(200).json({
       message: "Token refreshed successfully",
       user: {
@@ -162,6 +162,8 @@ export const refreshToken = async (
         username: user.username,
         email: user.email,
       },
+      token: newAccessToken,
+      refreshToken: newRefreshToken,
     });
   } catch (err: any) {
     res.status(500).json({

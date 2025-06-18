@@ -4,12 +4,23 @@ dotenv.config();
 import express from "express";
 import type { Request, Response } from "express";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import db from "./models";
 import userRoutes from "./routes/user.routes";
 import taskRoutes from "./routes/task.routes";
 import authRoutes from "./routes/auth.routes";
 
 const app = express();
+
+// CORS configuration
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "", // Allow your frontend origin
+    credentials: true, // Allow cookies to be sent with requests
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 // Middleware
 app.use(express.json());

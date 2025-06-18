@@ -55,7 +55,7 @@ export const setRefreshTokenCookie = (
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: REFRESH_TOKEN_EXPIRATION * 1000,
-    path: "/api/auth/refresh", // Only accessible for refresh endpoint
+    path: "/", // Available for all routes to make it accessible in tools like Postman
   });
 };
 
@@ -67,14 +67,13 @@ export const clearCookie = (res: Response): void => {
     maxAge: 0,
     path: "/",
   });
-
   // Also clear refresh token
   res.cookie("refreshToken", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     maxAge: 0,
-    path: "/api/auth/refresh",
+    path: "/", // Match the path used when setting
   });
 };
 
