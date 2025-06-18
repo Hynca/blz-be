@@ -2,6 +2,7 @@ import { Sequelize, DataTypes } from "sequelize";
 import dbConfig from "../config/db.config";
 import userModel from "./user.model";
 import taskModel from "./task.model";
+import taskUserModel from "./taskUser.model";
 
 // Create Sequelize instance using connection string
 const sequelize = new Sequelize(dbConfig.CONNECTION_STRING, {
@@ -21,10 +22,20 @@ const db: any = {
   Sequelize,
   users: userModel(sequelize),
   tasks: taskModel(sequelize),
+  taskUsers: taskUserModel(sequelize),
 };
 
-// Set up associations
-db.users.hasMany(db.tasks, { foreignKey: "userId" });
-db.tasks.belongsTo(db.users, { foreignKey: "userId" });
+// Set up many-to-many associations between tasks and users
+db.tasks.belongsToMany(db.users, {
+  through: db.taskUsers,
+  foreignKey: "taskId",
+  otherKey: "userId",
+});
+
+db.users.belongsToMany(db.tasks, {
+  through: db.taskUsers,
+  foreignKey: "userId",
+  otherKey: "taskId",
+});
 
 export default db;

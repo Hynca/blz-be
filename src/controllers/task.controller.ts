@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import db from "../models";
+import { TaskRepository } from "../repositories/task.repository";
 import { TaskAttributes, TaskCreationAttributes } from "../models/task.model";
-import { PaginatedResult, TableResponse } from "../types";
+import { TableResponse } from "../types";
 
-const Task = db.tasks;
+const taskRepository = new TaskRepository();
 
 // Helper to safely parse numeric IDs
 const parseNumericId = (id: string | undefined): number | null => {
@@ -30,17 +30,26 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         message: "Authentication required",
       });
       return;
-    } // Use TaskCreationAttributes to ensure type safety
+    }
+
+    // Get user IDs to assign to the task (default to current user if none provided)
+    const userIds: number[] =
+      req.body.userIds &&
+      Array.isArray(req.body.userIds) &&
+      req.body.userIds.length > 0
+        ? req.body.userIds
+        : [userId];
+
+    // Use TaskCreationAttributes to ensure type safety
     const task: TaskCreationAttributes = {
       title: req.body.title,
       description: req.body.description || "",
       startAt: new Date(req.body.startAt),
       endAt: new Date(req.body.endAt),
       location: req.body.location || "",
-      userId: userId,
     };
 
-    const data = await Task.create(task);
+    const data = await taskRepository.create(task, userIds);
     res.status(201).send(data);
   } catch (err: any) {
     res.status(500).send({
@@ -61,22 +70,8 @@ export const findAllByUser = async (
   }
 
   try {
-    const tasks = await Task.findAll({
-      where: { userId: userId },
-      // Explicitly select attributes to ensure we're only returning what we need
-      attributes: [
-        "id",
-        "title",
-        "description",
-        "startAt",
-        "endAt",
-        "location",
-        "userId",
-        "createdAt",
-        "updatedAt",
-      ],
-    });
-    res.send(tasks);
+    const tasks = await taskRepository.findAllByUser(userId);
+    res.send(tasks.rows);
   } catch (err: any) {
     res.status(500).send({
       message: err.message || "Some error occurred while retrieving tasks.",
@@ -104,40 +99,23 @@ export const findAllByUserAsTable = async (
         ? "DESC"
         : "ASC";
 
-    const offset = page * size;
-
-    // Use Sequelize's findAndCountAll for efficient pagination
-    const result = await Task.findAndCountAll({
-      where: { userId: userId },
-      order: [[sortBy, sortOrder]],
-      limit: size,
-      offset: offset,
-      attributes: [
-        "id",
-        "title",
-        "description",
-        "startAt",
-        "endAt",
-        "location",
-        "userId",
-        "createdAt",
-        "updatedAt",
-      ],
-      // Return plain objects instead of Sequelize instances
-      raw: true,
-    });
-
-    const count = result.count;
-    const tasks = result.rows as TaskAttributes[];
+    // Use repository to get the data with pagination
+    const result = await taskRepository.findAllByUser(
+      userId,
+      page,
+      size,
+      sortBy,
+      sortOrder
+    );
 
     // Format the data as a table structure
     const tableData: TableResponse<TaskAttributes> = {
-      items: tasks,
+      items: result.rows,
       pagination: {
         page,
         size,
-        totalItems: count,
-        totalPages: Math.ceil(count / size),
+        totalItems: result.count,
+        totalPages: Math.ceil(result.count / size),
       },
       sort: {
         sortBy,
@@ -168,23 +146,7 @@ export const findOne = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    const task = await Task.findOne({
-      where: {
-        id: id,
-        userId: userId,
-      },
-      attributes: [
-        "id",
-        "title",
-        "description",
-        "startAt",
-        "endAt",
-        "location",
-        "userId",
-        "createdAt",
-        "updatedAt",
-      ],
-    });
+    const task = await taskRepository.findOne(id, userId);
 
     if (task) {
       res.send(task);
@@ -202,7 +164,7 @@ export const findOne = async (req: Request, res: Response): Promise<void> => {
 
 // Update a Task by the id in the request
 export const update = async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id;
+  const id = parseInt(req.params.id, 10);
   const userId = req.user?.userId;
 
   if (!userId) {
@@ -210,15 +172,18 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  try {
-    const num = await Task.update(req.body, {
-      where: {
-        id: id,
-        userId: userId,
-      },
-    });
+  if (isNaN(id)) {
+    res.status(400).send({ message: "Invalid task ID" });
+    return;
+  }
 
-    if (num[0] === 1) {
+  try {
+    // Extract userIds if provided in request
+    const { userIds, ...taskData } = req.body;
+
+    const num = await taskRepository.update(id, userId, taskData, userIds);
+
+    if (num === 1) {
       res.send({
         message: "Task was updated successfully.",
       });
@@ -236,7 +201,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
 // Delete a Task with the specified id in the request
 export const remove = async (req: Request, res: Response): Promise<void> => {
-  const id = req.params.id;
+  const id = parseInt(req.params.id, 10);
   const userId = req.user?.userId;
 
   if (!userId) {
@@ -244,13 +209,13 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
+  if (isNaN(id)) {
+    res.status(400).send({ message: "Invalid task ID" });
+    return;
+  }
+
   try {
-    const num = await Task.destroy({
-      where: {
-        id: id,
-        userId: userId,
-      },
-    });
+    const num = await taskRepository.delete(id, userId);
 
     if (num === 1) {
       res.send({
@@ -264,6 +229,143 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
   } catch (err: any) {
     res.status(500).send({
       message: `Could not delete Task with id=${id}`,
+    });
+  }
+};
+
+// Get all users assigned to a task
+export const getTaskUsers = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const taskId = parseInt(req.params.id, 10);
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    res.status(401).send({ message: "Authentication required" });
+    return;
+  }
+
+  if (isNaN(taskId)) {
+    res.status(400).send({ message: "Invalid task ID" });
+    return;
+  }
+
+  try {
+    // First check if the user has access to this task
+    const task = await taskRepository.findOne(taskId, userId);
+
+    if (!task) {
+      res.status(404).send({
+        message: `Task with id=${taskId} not found or you don't have access to it.`,
+      });
+      return;
+    }
+
+    const users = await taskRepository.getTaskUsers(taskId);
+    res.send(users);
+  } catch (err: any) {
+    res.status(500).send({
+      message: `Error retrieving users for task with id=${taskId}`,
+    });
+  }
+};
+
+// Assign a user to a task
+export const addUserToTask = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const taskId = parseInt(req.params.id, 10);
+  const userIdToAdd = parseInt(req.params.userId, 10);
+  const currentUserId = req.user?.userId;
+
+  if (!currentUserId) {
+    res.status(401).send({ message: "Authentication required" });
+    return;
+  }
+
+  if (isNaN(taskId) || isNaN(userIdToAdd)) {
+    res.status(400).send({ message: "Invalid task ID or user ID" });
+    return;
+  }
+
+  try {
+    // First check if the current user has access to this task
+    const task = await taskRepository.findOne(taskId, currentUserId);
+
+    if (!task) {
+      res.status(404).send({
+        message: `Task with id=${taskId} not found or you don't have access to it.`,
+      });
+      return;
+    }
+
+    const success = await taskRepository.addUserToTask(taskId, userIdToAdd);
+
+    if (success) {
+      res.send({
+        message: "User was assigned to the task successfully.",
+      });
+    } else {
+      res.status(400).send({
+        message: `Cannot assign user to task. User may already be assigned.`,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).send({
+      message: `Error assigning user to task: ${err.message}`,
+    });
+  }
+};
+
+// Remove a user from a task
+export const removeUserFromTask = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  const taskId = parseInt(req.params.id, 10);
+  const userIdToRemove = parseInt(req.params.userId, 10);
+  const currentUserId = req.user?.userId;
+
+  if (!currentUserId) {
+    res.status(401).send({ message: "Authentication required" });
+    return;
+  }
+
+  if (isNaN(taskId) || isNaN(userIdToRemove)) {
+    res.status(400).send({ message: "Invalid task ID or user ID" });
+    return;
+  }
+
+  try {
+    // First check if the current user has access to this task
+    const task = await taskRepository.findOne(taskId, currentUserId);
+
+    if (!task) {
+      res.status(404).send({
+        message: `Task with id=${taskId} not found or you don't have access to it.`,
+      });
+      return;
+    }
+
+    const success = await taskRepository.removeUserFromTask(
+      taskId,
+      userIdToRemove
+    );
+
+    if (success) {
+      res.send({
+        message: "User was removed from the task successfully.",
+      });
+    } else {
+      res.status(400).send({
+        message: `Cannot remove user from task. User may not be assigned to the task.`,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).send({
+      message: `Error removing user from task: ${err.message}`,
     });
   }
 };
