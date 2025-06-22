@@ -38,7 +38,7 @@ export const setCookie = (res: Response, token: string): void => {
     maxAge: JWT_EXPIRATION * 1000,
     path: "/",
     domain:
-      process.env.NODE_ENV === "production" ? process.env.FE_DOMAIN : undefined,
+      process.env.NODE_ENV === "production" ? process.env.BE_DOMAIN : undefined,
   });
 };
 
@@ -53,7 +53,7 @@ export const setRefreshTokenCookie = (
     maxAge: REFRESH_TOKEN_EXPIRATION * 1000,
     path: "/",
     domain:
-      process.env.NODE_ENV === "production" ? process.env.FE_DOMAIN : undefined,
+      process.env.NODE_ENV === "production" ? process.env.BE_DOMAIN : undefined,
   });
 };
 
@@ -64,6 +64,8 @@ export const clearCookie = (res: Response): void => {
     sameSite: "strict",
     maxAge: 0,
     path: "/",
+    domain:
+      process.env.NODE_ENV === "production" ? process.env.BE_DOMAIN : undefined,
   });
   res.cookie("refreshToken", "", {
     httpOnly: true,
@@ -71,6 +73,8 @@ export const clearCookie = (res: Response): void => {
     sameSite: "strict",
     maxAge: 0,
     path: "/",
+    domain:
+      process.env.NODE_ENV === "production" ? process.env.BE_DOMAIN : undefined,
   });
 };
 
