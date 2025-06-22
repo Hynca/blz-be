@@ -28,13 +28,4 @@ router.put("/:id", taskController.update);
 // Delete a Task for authenticated User
 router.delete("/:id", taskController.remove);
 
-// Get all users assigned to a task
-router.get("/:id/users", taskController.getTaskUsers);
-
-// Add a user to a task
-router.post("/:id/users/:userId", taskController.addUserToTask);
-
-// Remove a user from a task
-router.delete("/:id/users/:userId", taskController.removeUserFromTask);
-
 export default router;

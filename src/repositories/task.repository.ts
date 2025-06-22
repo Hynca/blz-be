@@ -83,13 +83,10 @@ export class TaskRepository {
       const task = await Task.create(taskData, { transaction });
 
       if (userIds && userIds.length > 0) {
-        // Associate task with users
         await task.setUsers(userIds, { transaction });
       }
 
       await transaction.commit();
-
-      // Return the task with its associated users
       const createdTask = await Task.findByPk(task.id, {
         include: [
           {
@@ -116,7 +113,6 @@ export class TaskRepository {
     const transaction = await db.sequelize.transaction();
 
     try {
-      // First check if the user has access to this task
       const task = await Task.findOne({
         where: { id },
         include: [
@@ -131,13 +127,11 @@ export class TaskRepository {
 
       if (!task) return 0;
 
-      // Update task data
       const [affectedCount] = await Task.update(data, {
         where: { id },
         transaction,
       });
 
-      // If userIds are provided, update the task-user associations
       if (userIds !== undefined) {
         await task.setUsers(userIds, { transaction });
       }
@@ -154,7 +148,6 @@ export class TaskRepository {
     const transaction = await db.sequelize.transaction();
 
     try {
-      // First check if the user has access to this task
       const task = await Task.findOne({
         where: { id },
         include: [
@@ -169,7 +162,6 @@ export class TaskRepository {
 
       if (!task) return 0;
 
-      // Remove all user associations
       await task.setUsers([], { transaction });
 
       // Delete the task
@@ -215,8 +207,6 @@ export class TaskRepository {
 
     return tasks.map((task: any) => task.get({ plain: true }));
   }
-
-  // Add methods to handle task-user relationships directly
 
   async getTaskUsers(taskId: number): Promise<any[]> {
     const task = await Task.findByPk(taskId, {

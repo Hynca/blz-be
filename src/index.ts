@@ -6,7 +6,6 @@ import type { Request, Response } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import db from "./models";
-import userRoutes from "./routes/user.routes";
 import taskRoutes from "./routes/task.routes";
 import authRoutes from "./routes/auth.routes";
 
@@ -15,8 +14,8 @@ const app = express();
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "", // Allow your frontend origin
-    credentials: true, // Allow cookies to be sent with requests
+    origin: process.env.CORS_ORIGIN || "",
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -25,12 +24,11 @@ app.use(
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser()); // Add cookie parser middleware
+app.use(cookieParser());
 
 // Use routes
-app.use("/api/users", userRoutes);
 app.use("/api/tasks", taskRoutes);
-app.use("/api/auth", authRoutes); // Add authentication routes
+app.use("/api/auth", authRoutes);
 
 // Simple route for testing
 app.get("/", (req: Request, res: Response) => {

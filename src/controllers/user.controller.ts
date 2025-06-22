@@ -3,10 +3,8 @@ import db from "../models";
 
 const User = db.users;
 
-// Create and Save a new User
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate request
     if (!req.body.username || !req.body.email || !req.body.password) {
       res.status(400).send({
         message: "Content cannot be empty!",
@@ -14,14 +12,12 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Create a User
     const user = {
       username: req.body.username,
       email: req.body.email,
       password: req.body.password,
     };
 
-    // Save User in the database
     const data = await User.create(user);
     res.status(201).send(data);
   } catch (err: any) {
@@ -31,7 +27,6 @@ export const create = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Retrieve all Users from the database
 export const findAll = async (req: Request, res: Response): Promise<void> => {
   try {
     const data = await User.findAll();
@@ -43,7 +38,6 @@ export const findAll = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Find a single User with an id
 export const findOne = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
 
@@ -64,7 +58,6 @@ export const findOne = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Update a User by the id in the request
 export const update = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
 
@@ -89,7 +82,6 @@ export const update = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Delete a User with the specified id in the request
 export const remove = async (req: Request, res: Response): Promise<void> => {
   const id = req.params.id;
 
