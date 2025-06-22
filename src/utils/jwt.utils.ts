@@ -34,9 +34,11 @@ export const setCookie = (res: Response, token: string): void => {
   res.cookie("token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: JWT_EXPIRATION * 1000,
     path: "/",
+    domain:
+      process.env.NODE_ENV === "production" ? process.env.FE_DOMAIN : undefined,
   });
 };
 
@@ -47,9 +49,11 @@ export const setRefreshTokenCookie = (
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: REFRESH_TOKEN_EXPIRATION * 1000,
     path: "/",
+    domain:
+      process.env.NODE_ENV === "production" ? process.env.FE_DOMAIN : undefined,
   });
 };
 
