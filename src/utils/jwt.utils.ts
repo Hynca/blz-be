@@ -61,7 +61,7 @@ export const clearCookie = (res: Response): void => {
   res.cookie("token", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 0,
     path: "/",
     domain:
@@ -70,7 +70,7 @@ export const clearCookie = (res: Response): void => {
   res.cookie("refreshToken", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 0,
     path: "/",
     domain:
